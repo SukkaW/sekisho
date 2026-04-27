@@ -9,6 +9,7 @@
     "build": "pnpm --filter sekisho build",
     "lint": "eslint --format=sukka .",
     "example:dev": "pnpm --filter example-nextjs-app dev",
+    "example:build": "pnpm --filter example-nextjs-app build",
     "prerelease": "pnpm run lint && pnpm run build",
     "release": "bumpp packages/sekisho/package.json --install -r --commit \"release: %s\" --tag \"%s\""
   },

@@ -1,66 +1,71 @@
-import Image from 'next/image';
-import styles from './page.module.css';
+'use client';
 
-export default function Home() {
+import { needLogin } from 'sekisho';
+import { Suspense, useState } from 'react';
+import { useSession, useSetSession } from '../lib/session';
+
+function ThrowingComponent(): React.ReactNode {
+  throw new Error('Simulated Runtime Error');
+}
+
+export default function HomePage() {
+  const [shouldThrow, setShouldThrow] = useState(false);
+
+  const setSession = useSetSession();
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.tsx file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{' '}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{' '}
-            or the{' '}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{' '}
-            center.
-          </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <main>
+      <h1>Dashboard</h1>
+
+      <section>
+        <h2>Session Details</h2>
+
+        <Suspense fallback={<p>Reading session from sessionStorage...</p>}>
+          <SeesionDetails />
+        </Suspense>
+
+        <button
+          type="button"
+          onClick={() => {
+            // You only need to clear the seesion
+            // It is the <SessionDetails /> that will notice session is missing
+            // and call `needLogin()`, which will trigger `onNeedLogin`
+            setSession(null);
+          }}
+        >
+          Logout
+        </button>
+      </section>
+
+      <hr />
+
+      <section>
+        <h2>Error Boundary Demo</h2>
+        <p>
+          The button below renders a component that throws a plain <code>Error</code>.{' '}
+          It is to demonstrate that Sekisho's error wrapper / error boundary won't interfere with your app's error handling.
+        </p>
+        {shouldThrow
+          ? <ThrowingComponent />
+          : <button type="button" onClick={() => setShouldThrow(true)}>Simulate Runtime Error</button>}
+      </section>
+    </main>
+  );
+}
+
+function SeesionDetails() {
+  const session = useSession();
+
+  if (!session) {
+    needLogin('No active session');
+  }
+
+  return (
+    <dl>
+      <dt>Session</dt>
+      <dd><code>{session.session}</code></dd>
+      <dt>Login Time</dt>
+      <dd>{new Date(session.loginTime).toLocaleString()}</dd>
+    </dl>
   );
 }
