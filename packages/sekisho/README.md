@@ -1,6 +1,6 @@
 <h1 align="center">⛩️ sekisho</h1>
 <p align="center"><sup>(関所, <em>historical checkpoint for travel and security</em> in Japanese)</sup></p>
-<p align="center">Authentication and Access Control for any React app</p>
+<p align="center">Authentication and Access Control for any React app ([online demo](https://sekisho-demo.pages.dev/login))</p>
 
 ----
 
@@ -8,7 +8,7 @@
 
 ### Full example
 
-See the [example-nextjs-app](../../packages/example-nextjs-app).
+See the [example-nextjs-app](../../packages/example-nextjs-app). This example is deployed online at [https://sekisho-demo.pages.dev](https://sekisho-demo.pages.dev).
 
 ### Simple setup
 
