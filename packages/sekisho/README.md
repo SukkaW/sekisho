@@ -131,13 +131,48 @@ export const requireAuthMiddleware: Middleware = (useSWRNext) => (key, fetcher, 
 };
 ```
 
+### Restricting access
+
+Wrap any part of the UI with `SekishoAccessContainer` and call `accessRestricted()` inside it when the user lacks the required role or permission. Unlike `needLogin()`, which triggers a global redirect via `onNeedLogin`, `accessRestricted()` is local — `SekishoAccessContainer` simply renders `fallback` in place of its children:
+
+```tsx
+import { accessRestricted, SekishoAccessContainer } from 'sekisho';
+
+function AdminPanel() {
+  const { role } = useCurrentUser();
+
+  if (role !== 'admin') {
+    accessRestricted('Admin only');
+  }
+
+  return <div>Secret admin content</div>;
+}
+
+function Page() {
+  return (
+    <SekishoAccessContainer
+      fallback={<p>You don't have permission to view this section.</p>}
+    >
+      <AdminPanel />
+    </SekishoAccessContainer>
+  );
+}
+```
+
+This kinda like `<Suspense />` but for access control instead. And like `<Suspense />`, you can have multiple `SekishoAccessContainer`s nested independently — each one only catches the `accessRestricted()` calls within its own subtree.
+
 ## Explanation
 
-Sekisho is built on top of React's error boundaries. When you call `needLogin()` within the React render phase, it throws a special `NotAuthenticatedError`. React will then bubble the error up to the nearest React error boundary, and that's when Sekisho's error boundary went into action: it checks if the error is a `NotAuthenticatedError`, and if so, it calls the `onNeedLogin` callback you provided to `SekishoProvider`, and re-throws the error if it is not.
+Sekisho is built on top of React's error boundaries. Both `needLogin()` and `accessRestricted()` throw a special tagged error during the React render phase, which bubbles up to the nearest matching boundary:
 
-This way, you can centralize your authentication logic and keep it separate from your UI components.
+| Function | Error thrown | Caught by | Behaviour |
+|---|---|---|---|
+| `needLogin()` | `NotAuthenticatedError` | `SekishoErrorBoundary` / `SekishoErrorWrapper` | Calls `onNeedLogin` from `SekishoProvider` (global redirect) |
+| `accessRestricted()` | `AccessRestrictedError` | `SekishoAccessContainer` | Renders the `fallback` prop in place of children (local swap) |
 
-Also, with the `SekishoErrorWrapper` / `SekishoErrorBoundary`, you can create protected routes and unprotected routes more easily with any React apps:
+Each boundary re-throws errors it does not own, so `SekishoAccessContainer` never swallows an auth error, and `SekishoErrorBoundary` never swallows an access error. Your own error boundaries are unaffected by either.
+
+With `SekishoErrorWrapper` / `SekishoErrorBoundary` you can create protected and unprotected routes in any React app:
 
 **Next.js App Router**
 
