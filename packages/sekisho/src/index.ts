@@ -24,3 +24,14 @@ export {
   SekishoProvider,
   type SekishoProviderProps
 } from './provider';
+
+export {
+  accessRestricted,
+  isAccessRestrictedError,
+  AccessRestrictedError
+} from './access';
+
+export {
+  SekishoAccessContainer,
+  type SekishoAccessContainerProps
+} from './access-container';
