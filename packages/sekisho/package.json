@@ -29,8 +29,15 @@
   },
   "author": "Sukka <https://skk.moe>",
   "license": "MIT",
+  "dependencies": {
+    "foxact": "^0.3.0"
+  },
   "devDependencies": {
     "@swc/core": "^1.15.30",
+    "@types/react": "^19.2.14",
     "bunchee": "^6.10.0"
+  },
+  "peerDependencies": {
+    "react": ">=17.0.0"
   }
 }
