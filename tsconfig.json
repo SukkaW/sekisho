@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.base.json",
+  "references": [
+    { "path": "packages/sekisho" },
+    { "path": "packages/example-nextjs-app" }
+  ],
+  "files": []
+}
