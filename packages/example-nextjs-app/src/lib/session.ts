@@ -5,11 +5,12 @@ const SESSION_KEY = 'sekisho-demo-session';
 
 export interface Session {
   session: string,
+  role: 'admin' | 'user',
   loginTime: string
 }
 
 export const [useSessionState, useSession, useSetSession] = createSessionStorageState<Session>(SESSION_KEY, undefined);
 
-export function createSession(): Session {
-  return { session: uuidv4(), loginTime: new Date().toISOString() };
+export function createSession(role: 'admin' | 'user'): Session {
+  return { session: uuidv4(), role, loginTime: new Date().toISOString() };
 }
