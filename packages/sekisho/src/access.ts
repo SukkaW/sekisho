@@ -1,4 +1,4 @@
-import { createStackLessError } from './create-stackless-error';
+import { createStacklessError } from 'foxact/create-stackless-error';
 
 export class AccessRestrictedError extends Error {
   public readonly name = 'AccessRestrictedError';
@@ -43,5 +43,5 @@ export function isAccessRestrictedError(error: unknown): error is AccessRestrict
  * tree (including `SekishoErrorBoundary`) re-throws it unchanged.
  */
 export function accessRestricted(message: string): never {
-  throw createStackLessError(() => new AccessRestrictedError(message));
+  throw createStacklessError(() => new AccessRestrictedError(message));
 }

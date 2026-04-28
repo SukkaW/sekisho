@@ -1,4 +1,4 @@
-import { createStackLessError } from './create-stackless-error';
+import { createStacklessError } from 'foxact/create-stackless-error';
 
 export class NotAuthenticatedError extends Error {
   public readonly name = 'NotAuthenticatedError';
@@ -46,5 +46,5 @@ export function isNeedLoginError(error: unknown): error is NotAuthenticatedError
  * directly inside a component when session state is absent.
  */
 export function needLogin(message: string): never {
-  throw createStackLessError(() => new NotAuthenticatedError(message));
+  throw createStacklessError(() => new NotAuthenticatedError(message));
 }
