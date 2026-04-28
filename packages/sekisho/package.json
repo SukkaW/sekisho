@@ -30,10 +30,10 @@
   "author": "Sukka <https://skk.moe>",
   "license": "MIT",
   "dependencies": {
-    "foxact": "^0.3.0"
+    "foxact": "^0.3.1"
   },
   "devDependencies": {
-    "@swc/core": "^1.15.30",
+    "@swc/core": "^1.15.32",
     "@types/react": "^19.2.14",
     "bunchee": "^6.10.0"
   },

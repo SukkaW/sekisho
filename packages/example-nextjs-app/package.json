@@ -9,15 +9,15 @@
   },
   "dependencies": {
     "@lukeed/uuid": "^2.0.1",
-    "foxact": "^0.3.0",
-    "foxts": "^5.4.0",
+    "foxact": "^0.3.1",
+    "foxts": "^5.4.1",
     "next": "16.2.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "sekisho": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^20",
+    "@types/node": "^20.19.39",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "babel-plugin-react-compiler": "1.0.0"
