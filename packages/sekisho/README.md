@@ -1,6 +1,6 @@
 <h1 align="center">⛩️ sekisho</h1>
 <p align="center"><sup>(関所, <em>historical checkpoint for travel and security</em> in Japanese)</sup></p>
-<p align="center">Authentication and Access Control for any React app ([online demo](https://sekisho-demo.pages.dev/login))</p>
+<p align="center">Authentication and Access Control for any React app <a href="https://sekisho-demo.pages.dev" target="_blank">online demo</a></p>
 
 ----
 
