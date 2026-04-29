@@ -15,11 +15,20 @@ export default function LoginPage() {
 
   return (
     <main>
-      <h1>Login</h1>
+      <h1><a href="https://github.com/SukkaW/sekisho" target="_blank" rel="noreferrer">Sekisho</a> Demo</h1>
+      <h2>Login</h2>
       <p>Click below to create a fake in-memory session stored in <code>sessionStorage</code>.</p>
       <button type="button" onClick={() => handleLogin('admin')}>Login as Admin</button>
       <span style={{ margin: '0 8px' }} />
       <button type="button" onClick={() => handleLogin('user')}>Login as User</button>
+
+      <hr />
+
+      <p>
+        <a href="https://github.com/SukkaW/sekisho" target="_blank" rel="noreferrer">GitHub</a>
+        {' · '}
+        <code>npm install sekisho</code>
+      </p>
     </main>
   );
 }

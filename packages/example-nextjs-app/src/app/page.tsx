@@ -65,6 +65,14 @@ export default function HomePage() {
           ? <ThrowingComponent />
           : <button type="button" onClick={() => setShouldThrow(true)}>Simulate Runtime Error</button>}
       </section>
+
+      <hr />
+
+      <p>
+        <a href="https://github.com/SukkaW/sekisho" target="_blank" rel="noreferrer">GitHub</a>
+        {' · '}
+        <code>npm install sekisho</code>
+      </p>
     </main>
   );
 }
