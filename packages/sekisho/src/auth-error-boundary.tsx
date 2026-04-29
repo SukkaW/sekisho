@@ -5,8 +5,8 @@
 // Error components must be Client Components
 
 import { Component as ReactClassComponent } from 'react';
-import { isNeedLoginError } from './error';
-import { SekishoErrorWrapper } from './error-wrapper';
+import { isNeedLoginError } from './auth';
+import { SekishoErrorWrapper } from './auth-error-wrapper';
 
 export interface SekishoErrorBoundaryProps extends React.PropsWithChildren {}
 

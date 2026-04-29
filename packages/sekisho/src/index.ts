@@ -4,17 +4,17 @@ export {
   needLogin,
   isNeedLoginError,
   NotAuthenticatedError
-} from './error';
+} from './auth';
 
 export {
   SekishoErrorWrapper,
   type SekishoErrorWrapperProps
-} from './error-wrapper';
+} from './auth-error-wrapper';
 
 export {
   SekishoErrorBoundary,
   type SekishoErrorBoundaryProps
-} from './error-boundary';
+} from './auth-error-boundary';
 
 export {
   type SekishoOptions

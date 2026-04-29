@@ -3,7 +3,7 @@
 import { useLayoutEffect } from 'foxact/use-isomorphic-layout-effect';
 import { useSekishoOptions } from './options';
 import { useStableHandler } from 'foxact/use-stable-handler-only-when-you-know-what-you-are-doing-or-you-will-be-fired';
-import { isNeedLoginError } from './error';
+import { isNeedLoginError } from './auth';
 
 export interface SekishoErrorWrapperProps extends React.PropsWithChildren {
   error: unknown | null | undefined

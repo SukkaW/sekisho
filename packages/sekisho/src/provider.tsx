@@ -1,6 +1,6 @@
 'use client';
 
-import { SekishoErrorBoundary } from './error-boundary';
+import { SekishoErrorBoundary } from './auth-error-boundary';
 import { SekishoOptionsContext } from './options';
 import type { SekishoOptions } from './options';
 
