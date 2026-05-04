@@ -1,14 +1,23 @@
 'use client';
 
-import { SekishoProvider } from 'sekisho';
-import { useRouter } from 'next/navigation';
-import type { ReactNode } from 'react';
+import { NotAuthenticatedContainer } from 'sekisho';
+import { redirect } from 'next/navigation';
 
-export function Providers({ children }: { children: ReactNode }) {
-  const router = useRouter();
+// Fallback component that handles login redirect in render phase
+function LoginRedirect() {
+  return redirect('/login');
+
+  // If you are using React Router, you can do this instead:
+  //
+  // const navigate = useNavigate();
+  // useEffect(() => { navigate('/login'); }, [navigate]);
+  // return null;
+}
+
+export function Providers({ children }: React.PropsWithChildren) {
   return (
-    <SekishoProvider onNeedLogin={() => router.push('/login')}>
+    <NotAuthenticatedContainer fallbackComponent={LoginRedirect}>
       {children}
-    </SekishoProvider>
+    </NotAuthenticatedContainer>
   );
 }

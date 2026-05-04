@@ -1,8 +1,8 @@
-import type { ReactNode } from 'react';
 import { Providers } from './providers';
 import './globals.css';
+import type React from 'react';
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default function RootLayout({ children }: React.PropsWithChildren) {
   return (
     <html lang="en">
       <body>

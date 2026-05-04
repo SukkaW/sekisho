@@ -1,7 +1,8 @@
 'use client';
 
 import { createStacklessError } from 'foxact/create-stackless-error';
-import { Component as ReactClassComponent } from 'react';
+import { nullthrow } from 'foxact/nullthrow';
+import { Component as ReactClassComponent, createContext, useContext } from 'react';
 
 /** Base interface for every guard error created by `createSekisho`. */
 export interface SekishoGuardError extends Error {
@@ -9,7 +10,7 @@ export interface SekishoGuardError extends Error {
 }
 
 /**
- * Props accepted by the boundary component returned from `createSekisho`.
+ * Props accepted by the container component returned from `createSekisho`.
  *
  * Exactly one of `fallback` or `fallbackComponent` must be provided:
  *
@@ -19,27 +20,42 @@ export interface SekishoGuardError extends Error {
  *   Use this when you need the caught error object, e.g. to trigger a
  *   navigation side-effect (auth pattern).
  */
-export type SekishoGuardBoundaryProps = React.PropsWithChildren & (
+export type SekishoContainerProps = React.PropsWithChildren & (
   | { fallback: React.ReactNode, fallbackComponent?: never }
   | { fallback?: never, fallbackComponent: React.ComponentType<{ error: SekishoGuardError }> }
 );
 
-export interface SekishoGuardBoundaryState {
+/**
+ * Props accepted by the `ErrorWrapper` component returned from `createSekisho`.
+ *
+ * Mirrors the shape of framework error boundary props (Next.js `error.tsx`,
+ * React Router `errorElement`, etc.) so the component can be used as a direct
+ * wrapper without any adapter layer.
+ */
+export interface SekishoErrorWrapperProps extends React.PropsWithChildren {
+  error: unknown
+}
+
+interface SekishoGuardBoundaryState {
   error: unknown | null
 }
 
 /**
- * Creates a paired guard throw function, error boundary component, type guard,
- * and error class — all isolated from every other guard in the tree.
+ * Creates a paired guard throw function, container component, error wrapper,
+ * type guard, and error class — all isolated from every other guard in the tree.
  *
  * Call the returned throw function anywhere in the React render phase to signal
- * that a condition is unmet. The nearest boundary component in the tree will
+ * that a condition is unmet. The nearest container component in the tree will
  * catch it and render its `fallback` prop instead of `children`. Every other
  * error boundary — including ones from other `createSekisho()` calls —
  * re-throws the error unchanged.
  *
- * Returns a 4-tuple so each element can be named freely on destructure:
- * `[throwFn, BoundaryComponent, isError, ErrorClass]`
+ * The container component stores its `fallback`/`fallbackComponent` in context so
+ * that `ErrorWrapper` can reuse it from a framework error boundary (e.g. Next.js
+ * `error.tsx` or React Router `errorElement`) without repeating the redirect logic.
+ *
+ * Returns a 5-tuple so each element can be named freely on destructure:
+ * `[throwFn, ContainerComponent, ErrorWrapper, isError, ErrorClass]`
  *
  * @example
  * // Access-control pattern — static fallback element:
@@ -50,16 +66,31 @@ export interface SekishoGuardBoundaryState {
  * </OnboardingGate>
  *
  * @example
- * // Callback pattern — component receives the error object:
- * const [requireAuth, AuthGate] = createSekisho();
+ * // Auth pattern — render-phase redirect:
+ * const [requireAuth, AuthGate, AuthErrorWrapper] = createSekisho();
  *
- * <AuthGate fallbackComponent={AuthErrorHandler}>
- *   <Dashboard />
- * </AuthGate>
+ * function LoginRedirect(): never { redirect('/login'); }
+ *
+ * // In layout:
+ * <AuthGate fallbackComponent={LoginRedirect}>{children}</AuthGate>
+ *
+ * // In Next.js error.tsx:
+ * export default function ErrorPage({ error, reset }) {
+ *   return <AuthErrorWrapper error={error}>...</AuthErrorWrapper>;
+ * }
+ *
+ * // In React Router errorElement:
+ * const ErrorComponent = () => {
+ *   const error = useRouteError();
+ *   return <AuthErrorWrapper error={error}>...</AuthErrorWrapper>;
+ * }
+ *
+ * { errorElement: <ErrorComponent /> }
  */
 export function createSekisho(errorName?: string): [
   throwError: (message: string) => never,
-  BoundaryComponent: React.ComponentClass<SekishoGuardBoundaryProps, SekishoGuardBoundaryState>,
+  ContainerComponent: (props: SekishoContainerProps) => React.ReactNode,
+  ErrorWrapper: (props: SekishoErrorWrapperProps) => React.ReactNode,
   isError: (error: unknown) => error is SekishoGuardError,
   ErrorClass: new (message: string) => SekishoGuardError
 ] {
@@ -94,8 +125,32 @@ export function createSekisho(errorName?: string): [
     throw createStacklessError(() => new GuardError(message));
   }
 
-  class SekishoErrorBoundary extends ReactClassComponent<SekishoGuardBoundaryProps, SekishoGuardBoundaryState> {
-    constructor(props: SekishoGuardBoundaryProps) {
+  type ContainerOptions =
+    | { fallback: React.ReactNode, fallbackComponent?: never }
+    | { fallback?: never, fallbackComponent: React.ComponentType<{ error: SekishoGuardError }> };
+
+  const OptionsContext = createContext<ContainerOptions | null>(null);
+
+  // Single shared render path: reads options from context and renders the
+  // appropriate fallback. Used by both SekishoErrorBoundary (when it catches
+  // a guard error) and ErrorWrapper (when a framework error boundary receives one).
+  function ErrorWrapper({ error, children }: SekishoErrorWrapperProps): React.ReactNode {
+    // eslint-disable-next-line @eslint-react/static-components, @eslint-react/no-use-context -- component as a prop is a thing, and we need useContext for backward compat
+    const options = nullthrow(useContext(OptionsContext), '<ErrorWrapper /> must be used within its corresponding container component');
+
+    if (isGuardError(error)) {
+      const { fallback, fallbackComponent: FallbackComponent } = options;
+      // eslint-disable-next-line @eslint-react/static-components -- component as a prop is a thing
+      return FallbackComponent ? <FallbackComponent error={error} /> : fallback;
+    }
+
+    // if ErrorWrapper is rendered by our own error boundary, we will never reach here
+    // if ErrorWrapper is rendered by a framework error boundary, we want to render original error boundary as children
+    return children;
+  }
+
+  class ErrorBoundary extends ReactClassComponent<React.PropsWithChildren, SekishoGuardBoundaryState> {
+    constructor(props: React.PropsWithChildren) {
       super(props);
       this.state = { error: null };
     }
@@ -107,22 +162,32 @@ export function createSekisho(errorName?: string): [
     render(): React.ReactNode {
       const caughtError = this.state.error;
 
-      // early return if no error was caught
+      // No error — render children normally
       if (caughtError === null) {
         return this.props.children;
       }
 
-      // If we caught our own error, render the fallback
+      // Guard error — delegate to ErrorWrapper which reads options from context
       if (isGuardError(caughtError)) {
-        const { fallback, fallbackComponent: FallbackComponent } = this.props;
-        return FallbackComponent ? <FallbackComponent error={caughtError} /> : fallback;
+        return <ErrorWrapper error={caughtError} />;
       }
 
-      // Re-throw errors that aren't ours
-      // eslint-disable-next-line @typescript-eslint/only-throw-error -- we are re-throwing what we caught, we literally don't care
+      // Not our error — re-throw to bubble to the next boundary up
+      // eslint-disable-next-line @typescript-eslint/only-throw-error -- re-throwing what we caught
       throw caughtError;
     }
   }
 
-  return [throwGuard, SekishoErrorBoundary, isGuardError, GuardError];
+  function ContainerComponent({ children, ...options }: SekishoContainerProps): React.ReactNode {
+    return (
+      // eslint-disable-next-line @eslint-react/no-context-provider -- backward compat with older versions of React
+      <OptionsContext.Provider value={options}>
+        <ErrorBoundary>
+          {children}
+        </ErrorBoundary>
+      </OptionsContext.Provider>
+    );
+  }
+
+  return [throwGuard, ContainerComponent, ErrorWrapper, isGuardError, GuardError];
 }
