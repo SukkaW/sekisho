@@ -1,7 +1,7 @@
 'use client';
 
 import { extractErrorMessage } from 'foxts/extract-error-message';
-import { SekishoErrorWrapper } from 'sekisho';
+import { NotAuthenticatedErrorWrapper } from 'sekisho';
 
 interface ErrorPageProps {
   error: Error,
@@ -10,7 +10,7 @@ interface ErrorPageProps {
 
 export default function ErrorPage({ error, reset }: ErrorPageProps) {
   return (
-    <SekishoErrorWrapper error={error}>
+    <NotAuthenticatedErrorWrapper error={error}>
       <div>
         <h1>Typical App Error Boundary: something went wrong</h1>
         <pre>
@@ -24,6 +24,6 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
         </p>
         <button type="button" onClick={reset}>Clear Runtime Error</button>
       </div>
-    </SekishoErrorWrapper>
+    </NotAuthenticatedErrorWrapper>
   );
 }

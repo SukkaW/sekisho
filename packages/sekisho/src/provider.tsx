@@ -1,6 +1,6 @@
 'use client';
 
-import { SekishoErrorBoundary } from './auth-error-boundary';
+import { NotAuthenticatedBoundary } from './auth';
 import { SekishoOptionsContext } from './options';
 import type { SekishoOptions } from './options';
 
@@ -10,9 +10,9 @@ export function SekishoProvider({ children, ...auth }: SekishoProviderProps) {
   return (
     // eslint-disable-next-line @eslint-react/no-context-provider -- backward compat with older versions of React
     <SekishoOptionsContext.Provider value={auth}>
-      <SekishoErrorBoundary>
+      <NotAuthenticatedBoundary>
         {children}
-      </SekishoErrorBoundary>
+      </NotAuthenticatedBoundary>
     </SekishoOptionsContext.Provider>
   );
 }

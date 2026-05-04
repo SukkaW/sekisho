@@ -21,6 +21,12 @@
       "require": "./dist/index.cjs",
       "default": "./dist/index.cjs"
     },
+    "./factory": {
+      "types": "./dist/factory.d.ts",
+      "import": "./dist/factory.mjs",
+      "require": "./dist/factory.cjs",
+      "default": "./dist/factory.cjs"
+    },
     "./package.json": "./package.json"
   },
   "scripts": {

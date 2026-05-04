@@ -1,6 +1,6 @@
 'use client';
 
-import { accessRestricted, needLogin, SekishoAccessContainer } from 'sekisho';
+import { accessRestricted, needLogin, AccessRestrictedContainer } from 'sekisho';
 import { Suspense, useState } from 'react';
 import { useSession, useSetSession } from '../lib/session';
 
@@ -44,12 +44,12 @@ export default function HomePage() {
         <p>
           This section is only accessible to users with the <code>admin</code> role.
 
-          The access control is powered by Sekisho's <code>accessRestricted()</code> function and <code>{'<SekishoAccessContainer />'}</code> component.
+          The access control is powered by Sekisho's <code>accessRestricted()</code> function and <code>{'<AccessRestrictedContainer />'}</code> component.
         </p>
         <Suspense fallback={<p>Reading session from sessionStorage...</p>}>
-          <SekishoAccessContainer fallback={<p style={{ color: 'red' }}>You don't have admin access. Only admins can view this section.</p>}>
+          <AccessRestrictedContainer fallback={<p style={{ color: 'red' }}>You don't have admin access. Only admins can view this section.</p>}>
             <AdminSection />
-          </SekishoAccessContainer>
+          </AccessRestrictedContainer>
         </Suspense>
       </section>
 

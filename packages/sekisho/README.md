@@ -61,38 +61,38 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 }
 ```
 
-By default, `SekishoProvider` already includes `SekishoErrorBoundary` that will catch any `NotAuthenticatedError` thrown by `needLogin()` in the subtree. But if you have special error handling needs in certain parts of your app, you can also always import `SekishoErrorBoundary` directly to wrap those parts:
+By default, `SekishoProvider` already includes `NotAuthenticatedBoundary` that will catch any `NotAuthenticatedError` thrown by `needLogin()` in the subtree. But if you have special error handling needs in certain parts of your app, you can also always import `NotAuthenticatedBoundary` directly to wrap those parts:
 
 ```tsx
-import { SekishoErrorBoundary } from 'sekisho';
+import { NotAuthenticatedBoundary } from 'sekisho';
 
 function SomePartOfApp() {
   return (
-    <SekishoErrorBoundary>
+    <NotAuthenticatedBoundary>
       {/* ... */}
-    </SekishoErrorBoundary>
+    </NotAuthenticatedBoundary>
   );
 }
 ```
 
-And if you are using Next.js App Router and `error.tsx` file, due to Next.js layout, page, and error boundary heirarchy, you will also need to wrap the `error.tsx` with `SekishoErrorWrapper`:
+And if you are using Next.js App Router and `error.tsx` file, due to Next.js layout, page, and error boundary heirarchy, you will also need to wrap the `error.tsx` with `NotAuthenticatedErrorWrapper`:
 
 ```tsx
 // app/error.tsx
 'use client';
 
-import { SekishoErrorWrapper } from 'sekisho';
+import { NotAuthenticatedErrorWrapper } from 'sekisho';
 
 export default function ErrorPage({ error, reset }) {
   return (
-    <SekishoErrorWrapper error={error}>
+    <NotAuthenticatedErrorWrapper error={error}>
       {/* Your existing error UI goes in here */}
-    </SekishoErrorWrapper>
+    </NotAuthenticatedErrorWrapper>
   );
 }
 ```
 
-> `SekishoErrorWrapper` is actually used by `SekishoErrorBoundary` internally, containing all the core logic.
+> `NotAuthenticatedErrorWrapper` is actually used by `NotAuthenticatedBoundary` internally, containing all the core logic.
 
 ### Triggering a login redirect
 
@@ -133,10 +133,10 @@ export const requireAuthMiddleware: Middleware = (useSWRNext) => (key, fetcher, 
 
 ### Restricting access
 
-Wrap any part of the UI with `SekishoAccessContainer` and call `accessRestricted()` inside it when the user lacks the required role or permission. Unlike `needLogin()`, which triggers a global redirect via `onNeedLogin`, `accessRestricted()` is local — `SekishoAccessContainer` simply renders `fallback` in place of its children:
+Wrap any part of the UI with `AccessRestrictedContainer` and call `accessRestricted()` inside it when the user lacks the required role or permission. Unlike `needLogin()`, which triggers a global redirect via `onNeedLogin`, `accessRestricted()` is local — `AccessRestrictedContainer` simply renders `fallback` in place of its children:
 
 ```tsx
-import { accessRestricted, SekishoAccessContainer } from 'sekisho';
+import { accessRestricted, AccessRestrictedContainer } from 'sekisho';
 
 function AdminPanel() {
   const { role } = useCurrentUser();
@@ -150,16 +150,16 @@ function AdminPanel() {
 
 function Page() {
   return (
-    <SekishoAccessContainer
+    <AccessRestrictedContainer
       fallback={<p>You don't have permission to view this section.</p>}
     >
       <AdminPanel />
-    </SekishoAccessContainer>
+    </AccessRestrictedContainer>
   );
 }
 ```
 
-This kinda like `<Suspense />` but for access control instead. And like `<Suspense />`, you can have multiple `SekishoAccessContainer`s nested independently — each one only catches the `accessRestricted()` calls within its own subtree.
+This kinda like `<Suspense />` but for access control instead. And like `<Suspense />`, you can have multiple `AccessRestrictedContainer`s nested independently — each one only catches the `accessRestricted()` calls within its own subtree.
 
 ## Explanation
 
@@ -167,12 +167,12 @@ Sekisho is built on top of React's error boundaries. Both `needLogin()` and `acc
 
 | Function | Error thrown | Caught by | Behaviour |
 |---|---|---|---|
-| `needLogin()` | `NotAuthenticatedError` | `SekishoErrorBoundary` / `SekishoErrorWrapper` | Calls `onNeedLogin` from `SekishoProvider` (global redirect) |
-| `accessRestricted()` | `AccessRestrictedError` | `SekishoAccessContainer` | Renders the `fallback` prop in place of children (local swap) |
+| `needLogin()` | `NotAuthenticatedError` | `NotAuthenticatedBoundary` / `NotAuthenticatedErrorWrapper` | Calls `onNeedLogin` from `SekishoProvider` (global redirect) |
+| `accessRestricted()` | `AccessRestrictedError` | `AccessRestrictedContainer` | Renders the `fallback` prop in place of children (local swap) |
 
-Each boundary re-throws errors it does not own, so `SekishoAccessContainer` never swallows an auth error, and `SekishoErrorBoundary` never swallows an access error. Your own error boundaries are unaffected by either.
+Each boundary re-throws errors it does not own, so `AccessRestrictedContainer` never swallows an auth error, and `NotAuthenticatedBoundary` never swallows an access error. Your own error boundaries are unaffected by either.
 
-With `SekishoErrorWrapper` / `SekishoErrorBoundary` you can create protected and unprotected routes in any React app:
+With `NotAuthenticatedErrorWrapper` / `NotAuthenticatedBoundary` you can create protected and unprotected routes in any React app:
 
 **Next.js App Router**
 
@@ -180,7 +180,7 @@ With `SekishoErrorWrapper` / `SekishoErrorBoundary` you can create protected and
 app/
 ├── (protected)/            ← all protected routes goes under here
 │   ├── layout.tsx          ← wrap children with <SekishoProvider> here
-│   ├── error.tsx           ← wrap with <SekishoErrorWrapper> here
+│   ├── error.tsx           ← wrap with <NotAuthenticatedErrorWrapper> here
 │   └── page.tsx            ← homepage, where you call needLogin() when authentication is needed
 ├── (unprotected)/          ← all unprotected routes goes under here
 │   └── login/
@@ -206,9 +206,9 @@ const router = createBrowserRouter([
       {
         component() {
           return (
-            <SekishoErrorBoundary>
+            <NotAuthenticatedBoundary>
               <Outlet />
-            </SekishoErrorBoundary>
+            </NotAuthenticatedBoundary>
           );
         },
         children: [
@@ -220,6 +220,53 @@ const router = createBrowserRouter([
   }
 ]);
 ```
+
+## Build your own guard
+
+Sekisho also provides a low-level abstraction `createSekisho` from `sekisho/factory` for building your own custom gate with the same underlying mechanism. Let's say you want to build a guard for new user onboarding flow, where users need to complete their profile before accessing certain parts of the app:
+
+```tsx
+import { createSekisho } from 'sekisho/factory';
+
+const [requireOnboarding, OnboardingGate] = createSekisho('OnboardingRequired');
+
+function Dashboard() {
+  const user = useUser();
+
+  if (!user.profileComplete) {
+    requireOnboarding('Profile incomplete');
+  }
+
+  // actual dashboard content
+  return <div>Welcome back, {user.name}</div>;
+}
+
+function OnboardingGuard({ error }) {
+  redirect('/onboarding');
+}
+
+// Wrap your app with the boundary component
+function Page() {
+  return (
+    <OnboardingGate
+      fallback={<OnboardingGuard />}
+      // or you can pass a component that receives the error prop
+      fallbackComponent={OnboardingGuard}
+    >
+      <Dashboard />
+    </OnboardingGate>
+  );
+}
+```
+
+The `createSekisho()` factory returns a 4-tuple: `[throwFn, BoundaryComponent, isError, ErrorClass]`. You can name each element whatever makes sense for your use case:
+
+- **`throwFn`** — Call this during render to trigger the guard when a condition is unmet
+- **`BoundaryComponent`** — Error boundary that catches errors thrown by `throwFn`. Accepts `fallback` (static UI) or `fallbackComponent` (component that receives `{ error }`)
+- **`isError`** — Type guard to check if an error is from this guard (useful in middleware or error handlers)
+- **`ErrorClass`** — The error constructor, if you need `instanceof` checks
+
+Each call to `createSekisho()` is isolated — guards never accidentally catch each other's errors, even if nested.
 
 ## License
 
