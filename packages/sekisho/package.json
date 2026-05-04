@@ -1,6 +1,6 @@
 {
   "name": "sekisho",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Authentication and Access Control for any React app",
   "repository": {
     "type": "git",
