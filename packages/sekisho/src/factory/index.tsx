@@ -25,7 +25,7 @@ export type SekishoGuardBoundaryProps = React.PropsWithChildren & (
 );
 
 export interface SekishoGuardBoundaryState {
-  caughtError: SekishoGuardError | null
+  error: unknown | null
 }
 
 /**
@@ -87,7 +87,7 @@ export function createSekisho(errorName?: string): [
   }
 
   function isGuardError(error: unknown): error is GuardError {
-    return !!error && typeof error === 'object' && instances.has(error);
+    return typeof error === 'object' && error !== null && instances.has(error);
   }
 
   function throwGuard(message: string): never {
@@ -97,24 +97,30 @@ export function createSekisho(errorName?: string): [
   class SekishoErrorBoundary extends ReactClassComponent<SekishoGuardBoundaryProps, SekishoGuardBoundaryState> {
     constructor(props: SekishoGuardBoundaryProps) {
       super(props);
-      this.state = { caughtError: null };
+      this.state = { error: null };
     }
 
     static getDerivedStateFromError(this: void, error: unknown): SekishoGuardBoundaryState {
-      if (isGuardError(error)) {
-        return { caughtError: error };
-      }
-      // Not our error — let it propagate to the next boundary up the tree.
-      throw error;
+      return { error };
     }
 
     render(): React.ReactNode {
-      const { caughtError } = this.state;
-      if (caughtError !== null) {
+      const caughtError = this.state.error;
+
+      // early return if no error was caught
+      if (caughtError === null) {
+        return this.props.children;
+      }
+
+      // If we caught our own error, render the fallback
+      if (isGuardError(caughtError)) {
         const { fallback, fallbackComponent: FallbackComponent } = this.props;
         return FallbackComponent ? <FallbackComponent error={caughtError} /> : fallback;
       }
-      return this.props.children;
+
+      // Re-throw errors that aren't ours
+      // eslint-disable-next-line @typescript-eslint/only-throw-error -- we are re-throwing what we caught, we literally don't care
+      throw caughtError;
     }
   }
 
