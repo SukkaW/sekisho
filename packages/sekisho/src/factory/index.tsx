@@ -2,7 +2,7 @@
 
 import { createStacklessError } from 'foxact/create-stackless-error';
 import { nullthrow } from 'foxact/nullthrow';
-import { Component as ReactClassComponent, createContext, useContext } from 'react';
+import { Component as ReactClassComponent, Suspense, createContext, useContext, useMemo } from 'react';
 
 /** Base interface for every guard error created by `createSekisho`. */
 export interface SekishoGuardError extends Error {
@@ -17,12 +17,11 @@ export interface SekishoGuardError extends Error {
  * - `fallback` — a static `ReactNode` rendered in place of children when the
  *   guard fires (access-control pattern).
  * - `fallbackComponent` — a React component that receives `{ error }` as props.
- *   Use this when you need the caught error object, e.g. to trigger a
- *   navigation side-effect (auth pattern).
+ *   The `error` prop will only be `null` when the error is thrown in the server
  */
 export type SekishoContainerProps = React.PropsWithChildren & (
   | { fallback: React.ReactNode, fallbackComponent?: never }
-  | { fallback?: never, fallbackComponent: React.ComponentType<{ error: SekishoGuardError }> }
+  | { fallback?: never, fallbackComponent: React.ComponentType<{ error: SekishoGuardError | null }> }
 );
 
 /**
@@ -127,7 +126,7 @@ export function createSekisho(errorName?: string): [
 
   type ContainerOptions =
     | { fallback: React.ReactNode, fallbackComponent?: never }
-    | { fallback?: never, fallbackComponent: React.ComponentType<{ error: SekishoGuardError }> };
+    | { fallback?: never, fallbackComponent: React.ComponentType<{ error: SekishoGuardError | null }> };
 
   const OptionsContext = createContext<ContainerOptions | null>(null);
 
@@ -147,6 +146,19 @@ export function createSekisho(errorName?: string): [
     // if ErrorWrapper is rendered by our own error boundary, we will never reach here
     // if ErrorWrapper is rendered by a framework error boundary, we want to render original error boundary as children
     return children;
+  }
+
+  function SuspenseBoundary({ children }: React.PropsWithChildren): React.ReactNode {
+    // eslint-disable-next-line @eslint-react/static-components, @eslint-react/no-use-context -- component as a prop is a thing, and we need useContext for backward compat
+    const { fallback, fallbackComponent: FallbackComponent } = nullthrow(useContext(OptionsContext), '<ErrorWrapper /> must be used within its corresponding container component');
+    // eslint-disable-next-line @eslint-react/static-components -- component as a prop is a thing
+    const fallbackElement = useMemo(() => (FallbackComponent ? <FallbackComponent error={null} /> : fallback), [fallback, FallbackComponent]);
+
+    return (
+      <Suspense fallback={fallbackElement}>
+        {children}
+      </Suspense>
+    );
   }
 
   class ErrorBoundary extends ReactClassComponent<React.PropsWithChildren, SekishoGuardBoundaryState> {
@@ -179,11 +191,15 @@ export function createSekisho(errorName?: string): [
   }
 
   function ContainerComponent({ children, ...options }: SekishoContainerProps): React.ReactNode {
+    // The ErrorBoundary must wraps the SuspenseBoundary, just like Next.js hierarchy:
+    // https://nextjs.org/docs/app/getting-started/project-structure#component-hierarchy
     return (
       // eslint-disable-next-line @eslint-react/no-context-provider -- backward compat with older versions of React
       <OptionsContext.Provider value={options}>
         <ErrorBoundary>
-          {children}
+          <SuspenseBoundary>
+            {children}
+          </SuspenseBoundary>
         </ErrorBoundary>
       </OptionsContext.Provider>
     );
