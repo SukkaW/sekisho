@@ -31,6 +31,7 @@ jobs:
           check-latest: true
           cache: 'pnpm'
           registry-url: 'https://registry.npmjs.org'
+      - run: pnpm config set --location=global minimumReleaseAge 0
       - run: pnpm install
       - run: pnpm run build
       - run: npm i npm@latest -g
