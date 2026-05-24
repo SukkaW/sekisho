@@ -39,7 +39,7 @@
     "foxact": "^0.3.4"
   },
   "devDependencies": {
-    "@swc/core": "^1.15.33",
+    "@swc/core": "^1.15.40",
     "@types/react": "^19.2.15",
     "bunchee": "^6.10.0"
   },
