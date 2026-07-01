@@ -1,8 +1,9 @@
 'use client';
 
-import { accessRestricted, needLogin, AccessRestrictedContainer } from 'sekisho';
+import { accessRestricted, needLogin, AccessRestrictedContainer, useAccessRestrictedReset } from 'sekisho';
+import type { AccessRestrictedFallbackProps } from 'sekisho';
 import { Suspense, useState } from 'react';
-import { useSession, useSetSession } from '../lib/session';
+import { createSession, useSession, useSetSession } from '../lib/session';
 
 function ThrowingComponent(): React.ReactNode {
   throw new Error('Simulated Runtime Error');
@@ -47,7 +48,7 @@ export default function HomePage() {
           The access control is powered by Sekisho's <code>accessRestricted()</code> function and <code>{'<AccessRestrictedContainer />'}</code> component.
         </p>
         <Suspense fallback={<p>Reading session from sessionStorage...</p>}>
-          <AccessRestrictedContainer fallback={<p style={{ color: 'red' }}>You don't have admin access. Only admins can view this section.</p>}>
+          <AccessRestrictedContainer fallbackComponent={AccessRestrictedFallback}>
             <AdminSection />
           </AccessRestrictedContainer>
         </Suspense>
@@ -74,6 +75,38 @@ export default function HomePage() {
         <code>npm install sekisho</code>
       </p>
     </main>
+  );
+}
+
+function AccessRestrictedFallback({ error, reset }: AccessRestrictedFallbackProps) {
+  return (
+    <div>
+      <p style={{ color: 'red' }}>
+        You don't have admin access. Only admins can view this section. (<code>{error.message}</code>)
+      </p>
+      {/* `reset` re-renders the children; the guard still fails, so the fallback re-appears */}
+      <button type="button" onClick={reset}>Re-check access</button>
+      {' '}
+      <ElevateToAdminButton />
+    </div>
+  );
+}
+
+// Demonstrates resetting via the hook, from a component nested inside the fallback
+function ElevateToAdminButton() {
+  const reset = useAccessRestrictedReset();
+  const setSession = useSetSession();
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        setSession(createSession('admin'));
+        reset();
+      }}
+    >
+      Elevate to admin & re-check
+    </button>
   );
 }
 

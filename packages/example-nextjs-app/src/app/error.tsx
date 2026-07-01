@@ -10,7 +10,7 @@ interface ErrorPageProps {
 
 export default function ErrorPage({ error, reset }: ErrorPageProps) {
   return (
-    <NotAuthenticatedErrorWrapper error={error}>
+    <NotAuthenticatedErrorWrapper error={error} reset={reset}>
       <div>
         <h1>Typical App Error Boundary: something went wrong</h1>
         <pre>
