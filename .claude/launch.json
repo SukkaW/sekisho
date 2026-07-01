@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "example-nextjs-app",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "example-nextjs-app", "dev"],
+      "port": 3000,
+      "autoPort": true
+    }
+  ]
+}
