@@ -7,7 +7,9 @@ export {
   NotAuthenticatedContainer,
   type NotAuthenticatedContainerProps,
   NotAuthenticatedErrorWrapper,
-  type NotAuthenticatedErrorWrapperProps
+  type NotAuthenticatedErrorWrapperProps,
+  type NotAuthenticatedFallbackProps,
+  useNotAuthenticatedReset
 } from './auth';
 
 export {
@@ -17,5 +19,7 @@ export {
   AccessRestrictedContainer,
   type AccessRestrictedContainerProps,
   AccessRestrictedErrorWrapper,
-  type AccessRestrictedErrorWrapperProps
+  type AccessRestrictedErrorWrapperProps,
+  type AccessRestrictedFallbackProps,
+  useAccessRestrictedReset
 } from './access';

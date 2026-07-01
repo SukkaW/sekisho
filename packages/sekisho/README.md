@@ -135,12 +135,14 @@ export function ProtectedLayout({ children }: React.PropsWithChildren) {
 >
 > export default function ErrorPage({ error, reset }) {
 >   return (
->     <NotAuthenticatedErrorWrapper error={error}>
+>     <NotAuthenticatedErrorWrapper error={error} reset={reset}>
 >       {/* Your existing error UI goes in here */}
 >     </NotAuthenticatedErrorWrapper>
 >   );
 > }
 > ```
+>
+> Passing Next.js' `reset` to `NotAuthenticatedErrorWrapper` is optional, but it allows your fallback UI to recover from the error (see [Resetting the Boundary](#resetting-the-boundary)).
 
 **Set up with React Router**
 
@@ -232,6 +234,61 @@ function Page() {
 
 This kinda like `<Suspense />` but for access control instead. And like `<Suspense />`, you can have multiple `AccessRestrictedContainer`s nested independently — each one only catches the `accessRestricted()` calls within its own subtree.
 
+### Resetting the Boundary
+
+Like a regular error boundary, a container can clear the caught error and re-render its children (e.g. after the user upgrades their plan, or re-authenticates in a modal without navigating away). If the guard condition is still unmet, the children will simply throw again and the fallback re-appears.
+
+**With `fallbackComponent`** — the component receives a `reset` function alongside `error`:
+
+```tsx
+import { AccessRestrictedContainer } from 'sekisho';
+
+function AccessRestricted({ error, reset }) {
+  return (
+    <div>
+      <p>You don't have permission to view this section. ({error.message})</p>
+      <button type="button" onClick={reset}>Try again</button>
+    </div>
+  );
+}
+
+<AccessRestrictedContainer fallbackComponent={AccessRestricted}>
+  <AdminPanel />
+</AccessRestrictedContainer>
+```
+
+**With `fallback` (direct JSX)** — a pre-constructed element can't receive props from the boundary, so use the `useAccessRestrictedReset()` / `useNotAuthenticatedReset()` hook inside any component rendered within the fallback instead (similar to `useErrorBoundary()` from `react-error-boundary`):
+
+```tsx
+import { AccessRestrictedContainer, useAccessRestrictedReset } from 'sekisho';
+
+function RetryButton() {
+  const reset = useAccessRestrictedReset();
+  return <button type="button" onClick={reset}>Try again</button>;
+}
+
+<AccessRestrictedContainer fallback={<p>No permission. <RetryButton /></p>}>
+  <AdminPanel />
+</AccessRestrictedContainer>
+```
+
+The hook reads the reset function from the container's context, so it works no matter how deep the component sits inside the fallback tree — and each guard's hook only sees its own container, so nested guards stay isolated. Calling the hook outside a fallback throws.
+
+**With a framework error boundary** — when the guard error is caught by Next.js `error.tsx` or React Router's `errorElement` instead of the container itself, sekisho has no boundary of its own to reset. Forward the framework's reset mechanism via the `reset` prop of the `ErrorWrapper` component, and it will be delivered to `fallbackComponent` and the reset hook as usual:
+
+```tsx
+// app/error.tsx
+export default function ErrorPage({ error, reset }) {
+  return (
+    <NotAuthenticatedErrorWrapper error={error} reset={reset}>
+      {/* Your existing error UI goes in here */}
+    </NotAuthenticatedErrorWrapper>
+  );
+}
+```
+
+If you don't pass `reset` to the `ErrorWrapper`, the `reset` prop of `fallbackComponent` will be `undefined` and the reset hook will throw.
+
 ## Explanation
 
 Sekisho is built on top of React's error boundaries. Both `needLogin()` and `accessRestricted()` throw a special tagged error during the React render phase, which bubbles up to the nearest matching boundary. Each boundary re-throws errors it does not own, so your own error boundaries are unaffected.
@@ -270,14 +327,15 @@ function Dashboard() {
 }
 ```
 
-The `createSekisho()` factory returns a 5-tuple so each element can be named freely on destructure:
-`[throwFn, ContainerComponent, ErrorWrapper, isError, ErrorClass]`
+The `createSekisho()` factory returns a 6-tuple so each element can be named freely on destructure:
+`[throwFn, ContainerComponent, ErrorWrapper, isError, ErrorClass, useReset]`
 
 - **`throwFn`** — Call this during render to trigger the guard when a condition is unmet
-- **`ContainerComponent`** — Error boundary that catches errors thrown by `throwFn`. Accepts `fallback` (static UI) or `fallbackComponent` (component that receives `{ error }`). Stores the options in context for `ErrorWrapper` to reuse.
-- **`ErrorWrapper`** — Companion for framework error boundaries (Next.js `error.tsx`, React Router `errorElement`, etc.). Reads `fallback`/`fallbackComponent` from the nearest `ContainerComponent` ancestor in context.
+- **`ContainerComponent`** — Error boundary that catches errors thrown by `throwFn`. Accepts `fallback` (static UI) or `fallbackComponent` (component that receives `{ error, reset }`). Stores the options in context for `ErrorWrapper` to reuse.
+- **`ErrorWrapper`** — Companion for framework error boundaries (Next.js `error.tsx`, React Router `errorElement`, etc.). Reads `fallback`/`fallbackComponent` from the nearest `ContainerComponent` ancestor in context. Accepts an optional `reset` prop to forward the framework's reset mechanism.
 - **`isError`** — Type guard to check if an error is from this guard (useful in middleware or error handlers)
 - **`ErrorClass`** — The error constructor
+- **`useReset`** — Hook that returns the boundary's reset function; call it from components rendered inside a `fallback` element (see [Resetting the Boundary](#resetting-the-boundary))
 
 Each call to `createSekisho()` is isolated — guards never accidentally catch each other's errors, even if nested.
 

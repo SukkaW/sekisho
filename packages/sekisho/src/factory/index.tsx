@@ -10,18 +10,32 @@ export interface SekishoGuardError extends Error {
 }
 
 /**
+ * Props passed to a `fallbackComponent` when the guard fires.
+ */
+export interface SekishoFallbackComponentProps {
+  error: SekishoGuardError,
+  /**
+   * Clears the caught error and re-renders children, like a regular error
+   * boundary reset. Only `undefined` when the fallback is rendered through
+   * `ErrorWrapper` inside a framework error boundary and no `reset` prop was
+   * forwarded to `ErrorWrapper`.
+   */
+  reset?: () => void
+}
+
+/**
  * Props accepted by the container component returned from `createSekisho`.
  *
  * Exactly one of `fallback` or `fallbackComponent` must be provided:
  *
  * - `fallback` — a static `ReactNode` rendered in place of children when the
  *   guard fires (access-control pattern).
- * - `fallbackComponent` — a React component that receives `{ error }` as props.
+ * - `fallbackComponent` — a React component that receives `{ error, reset }` as props.
  *   The `error` prop will only be `null` when the error is thrown in the server
  */
 export type SekishoContainerProps = React.PropsWithChildren & (
   | { fallback: React.ReactNode, fallbackComponent?: never }
-  | { fallback?: never, fallbackComponent: React.ComponentType<{ error: SekishoGuardError }> }
+  | { fallback?: never, fallbackComponent: React.ComponentType<SekishoFallbackComponentProps> }
 );
 
 /**
@@ -32,7 +46,13 @@ export type SekishoContainerProps = React.PropsWithChildren & (
  * wrapper without any adapter layer.
  */
 export interface SekishoErrorWrapperProps extends React.PropsWithChildren {
-  error: unknown
+  error: unknown,
+  /**
+   * The framework error boundary's own reset function (e.g. the `reset` prop of
+   * Next.js `error.tsx`). Forwarded to `fallbackComponent` and to the `useReset`
+   * hook so the fallback UI can recover from the error.
+   */
+  reset?: () => void
 }
 
 interface SekishoGuardBoundaryState {
@@ -53,8 +73,8 @@ interface SekishoGuardBoundaryState {
  * that `ErrorWrapper` can reuse it from a framework error boundary (e.g. Next.js
  * `error.tsx` or React Router `errorElement`) without repeating the redirect logic.
  *
- * Returns a 5-tuple so each element can be named freely on destructure:
- * `[throwFn, ContainerComponent, ErrorWrapper, isError, ErrorClass]`
+ * Returns a 6-tuple so each element can be named freely on destructure:
+ * `[throwFn, ContainerComponent, ErrorWrapper, isError, ErrorClass, useReset]`
  *
  * @example
  * // Access-control pattern — static fallback element:
@@ -85,13 +105,25 @@ interface SekishoGuardBoundaryState {
  * }
  *
  * { errorElement: <ErrorComponent /> }
+ *
+ * @example
+ * // Resetting the boundary from a static `fallback` element:
+ * const [requireAuth, AuthGate, , , , useAuthGateReset] = createSekisho();
+ *
+ * function RetryButton() {
+ *   const reset = useAuthGateReset();
+ *   return <button type="button" onClick={reset}>Try again</button>;
+ * }
+ *
+ * <AuthGate fallback={<RetryButton />}>{children}</AuthGate>
  */
 export function createSekisho(errorName?: string): [
   throwError: (message: string) => never,
   ContainerComponent: (props: SekishoContainerProps) => React.ReactNode,
   ErrorWrapper: (props: SekishoErrorWrapperProps) => React.ReactNode,
   isError: (error: unknown) => error is SekishoGuardError,
-  ErrorClass: new (message: string) => SekishoGuardError
+  ErrorClass: new (message: string) => SekishoGuardError,
+  useReset: () => () => void
 ] {
   // WeakSet is the identification mechanism: each createSekisho() call
   // gets its own set, so guards never accidentally catch each other's errors.
@@ -126,21 +158,38 @@ export function createSekisho(errorName?: string): [
 
   type ContainerOptions =
     | { fallback: React.ReactNode, fallbackComponent?: never }
-    | { fallback?: never, fallbackComponent: React.ComponentType<{ error: SekishoGuardError }> };
+    | { fallback?: never, fallbackComponent: React.ComponentType<SekishoFallbackComponentProps> };
 
   const OptionsContext = createContext<ContainerOptions | null>(null);
+
+  // Reset is delivered through context (instead of only through props) so that
+  // a static `fallback` element — which is created before the error even exists —
+  // can still reach it via the `useReset` hook, like react-error-boundary's
+  // `useErrorBoundary`. Per-factory context keeps nested guards isolated.
+  const ResetContext = createContext<(() => void) | null>(null);
+
+  function useReset(): () => void {
+    // eslint-disable-next-line @eslint-react/no-use-context -- we need useContext for backward compat
+    const reset = useContext(ResetContext);
+    return nullthrow(reset, 'useReset() must be called from within a fallback rendered by its corresponding container component (or pass `reset` to <ErrorWrapper /> when using a framework error boundary)');
+  }
 
   // Single shared render path: reads options from context and renders the
   // appropriate fallback. Used by both SekishoErrorBoundary (when it catches
   // a guard error) and ErrorWrapper (when a framework error boundary receives one).
-  function ErrorWrapper({ error, children }: SekishoErrorWrapperProps): React.ReactNode {
+  function ErrorWrapper({ error, reset, children }: SekishoErrorWrapperProps): React.ReactNode {
     // eslint-disable-next-line @eslint-react/static-components, @eslint-react/no-use-context -- component as a prop is a thing, and we need useContext for backward compat
     const options = nullthrow(useContext(OptionsContext), '<ErrorWrapper /> must be used within its corresponding container component');
 
     if (isGuardError(error)) {
       const { fallback, fallbackComponent: FallbackComponent } = options;
-      // eslint-disable-next-line @eslint-react/static-components -- component as a prop is a thing
-      return FallbackComponent ? <FallbackComponent error={error} /> : fallback;
+      return (
+        // eslint-disable-next-line @eslint-react/no-context-provider -- backward compat with older versions of React
+        <ResetContext.Provider value={reset ?? null}>
+          {/* eslint-disable-next-line @eslint-react/static-components -- component as a prop is a thing */}
+          {FallbackComponent ? <FallbackComponent error={error} reset={reset} /> : fallback}
+        </ResetContext.Provider>
+      );
     }
 
     // if ErrorWrapper is rendered by our own error boundary, we will never reach here
@@ -158,6 +207,10 @@ export function createSekisho(errorName?: string): [
       return { error };
     }
 
+    reset = (): void => {
+      this.setState({ error: null });
+    };
+
     render(): React.ReactNode {
       const caughtError = this.state.error;
 
@@ -168,7 +221,7 @@ export function createSekisho(errorName?: string): [
 
       // Guard error — delegate to ErrorWrapper which reads options from context
       if (isGuardError(caughtError)) {
-        return <ErrorWrapper error={caughtError} />;
+        return <ErrorWrapper error={caughtError} reset={this.reset} />;
       }
 
       // Not our error — re-throw to bubble to the next boundary up
@@ -188,5 +241,5 @@ export function createSekisho(errorName?: string): [
     );
   }
 
-  return [throwGuard, ContainerComponent, ErrorWrapper, isGuardError, GuardError];
+  return [throwGuard, ContainerComponent, ErrorWrapper, isGuardError, GuardError, useReset];
 }
