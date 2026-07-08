@@ -4,6 +4,16 @@ import { accessRestricted, needLogin, AccessRestrictedContainer, useAccessRestri
 import type { AccessRestrictedFallbackProps } from 'sekisho';
 import { Suspense, useState } from 'react';
 import { createSession, useSession, useSetSession } from '../lib/session';
+import {
+  requireOrganization,
+  OrganizationRequiredContainer,
+  ORGANIZATIONS,
+  getOrgData,
+  useSelectedOrg,
+  useSetSelectedOrg,
+  ORGANIZATION_MAP
+} from '../lib/organization';
+import type { OrganizationRequiredFallbackProps } from '../lib/organization';
 
 function ThrowingComponent(): React.ReactNode {
   throw new Error('Simulated Runtime Error');
@@ -51,6 +61,20 @@ export default function HomePage() {
           <AccessRestrictedContainer fallbackComponent={AccessRestrictedFallback}>
             <AdminSection />
           </AccessRestrictedContainer>
+        </Suspense>
+      </section>
+
+      <hr />
+
+      <section>
+        <h2>Organization Dashboard</h2>
+        <p>
+          This section demonstrates a <strong>custom sekisho guard</strong> built with <code>createSekisho()</code> from <code>sekisho/factory</code>.
+          {' '}The organization data below requires an org to be selected — otherwise the guard fires and the fallback is shown.
+        </p>
+
+        <Suspense fallback={<p>Loading organization data...</p>}>
+          <OrgSection />
         </Suspense>
       </section>
 
@@ -143,5 +167,102 @@ function SeesionDetails() {
       <dt>Login Time</dt>
       <dd>{new Date(session.loginTime).toLocaleString()}</dd>
     </dl>
+  );
+}
+
+function OrgSection() {
+  const selectedOrg = useSelectedOrg();
+
+  return (
+    <>
+      <OrgSelector />
+      <OrganizationRequiredContainer key={selectedOrg ?? '__none__'} fallbackComponent={OrgRequiredFallback}>
+        <OrgDashboard />
+      </OrganizationRequiredContainer>
+    </>
+  );
+}
+
+function OrgSelector() {
+  const selectedOrg = useSelectedOrg();
+  const setSelectedOrg = useSetSelectedOrg();
+
+  return (
+    <div style={{ margin: '0.75rem 0' }}>
+      <label htmlFor="org-select" style={{ fontWeight: 600, marginRight: '0.5rem' }}>
+        Select organization:
+      </label>
+      <select
+        id="org-select"
+        value={selectedOrg ?? ''}
+        onChange={(e) => {
+          const value = e.target.value;
+          setSelectedOrg(value || null);
+        }}
+      >
+        <option value="">-- None --</option>
+        {ORGANIZATIONS.map((org) => (
+          <option key={org.id} value={org.id}>{org.name}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function OrgRequiredFallback({ error }: OrganizationRequiredFallbackProps) {
+  return (
+    <div style={{ padding: '1rem', border: '1px solid #ccc', borderRadius: 4, background: '#fafafa', marginTop: '0.75rem' }}>
+      <p style={{ margin: 0, color: '#888' }}>
+        <code>{'<OrgRequiredFallback />'}</code>
+        <br />
+        <br />
+        {error.message}
+      </p>
+    </div>
+  );
+}
+
+function OrgDashboard() {
+  const selectedOrg = useSelectedOrg();
+
+  if (!selectedOrg) {
+    return requireOrganization('No organization is selected');
+  }
+
+  if (!(selectedOrg in ORGANIZATION_MAP)) {
+    return requireOrganization(`Selected organization "${selectedOrg}" is not found`);
+  }
+
+  const org = ORGANIZATION_MAP[selectedOrg];
+  const data = getOrgData(org.id);
+  if (!data) {
+    return requireOrganization(`Selected organization "${selectedOrg}" is not found`);
+  }
+
+  return (
+    <div style={{ marginTop: '0.75rem' }}>
+      <dl>
+        <dt>Organization</dt>
+        <dd><strong>{org.name}</strong></dd>
+        <dt>Plan</dt>
+        <dd>{org.plan}</dd>
+        <dt>Members</dt>
+        <dd>{org.members}</dd>
+        <dt>Created</dt>
+        <dd>{org.createdAt}</dd>
+        <dt>API Calls</dt>
+        <dd>{data.apiCalls.toLocaleString()}</dd>
+        <dt>Storage</dt>
+        <dd>{data.storageUsedMb.toLocaleString()} MB</dd>
+      </dl>
+      <h3 style={{ fontSize: '1rem', margin: '1rem 0 0.5rem' }}>Projects</h3>
+      <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
+        {data.projects.map((p) => (
+          <li key={p.name}>
+            {p.name} <span style={{ color: p.status === 'active' ? 'green' : '#999', fontSize: '0.85em' }}>({p.status})</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

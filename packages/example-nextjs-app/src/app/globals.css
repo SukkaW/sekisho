@@ -25,6 +25,14 @@ button {
 }
 button:hover { background: #e8e8e8; }
 
+select {
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 0.9rem;
+}
+
 hr { border: none; border-top: 1px solid #e5e5e5; margin: 2rem 0; }
 
 .error-box {
