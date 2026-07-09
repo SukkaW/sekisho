@@ -35,6 +35,11 @@ function LoginRedirect() {
 
   // Wouter
   return <Redirect to="/login" />;
+
+  // Auth0
+  const { loginWithRedirect } = useAuth0();
+  useEffect(() => { loginWithRedirect(); }, [loginWithRedirect]);
+  return null;
 }
 
 export function Protected() {
@@ -59,9 +64,15 @@ Call `needLogin()` anywhere during the React render phase. You can call `needLog
 import { needLogin } from 'sekisho';
 
 function Dashboard() {
+  // demo auth library
   const session = useAuthSession();
-
   if (!session) {
+    needLogin('No active session');
+  }
+
+  // Auth0
+  const { isLoading, isAuthenticated } = useAuth0();
+  if (!isLoading && !isAuthenticated) {
     needLogin('No active session');
   }
 
