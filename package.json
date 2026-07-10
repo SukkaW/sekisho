@@ -8,9 +8,10 @@
   "scripts": {
     "build": "pnpm --filter sekisho build",
     "lint": "eslint --format=sukka .",
+    "typecheck": "tsc --build --noEmit",
     "example:dev": "pnpm --filter example-nextjs-app dev",
     "example:build": "pnpm --filter example-nextjs-app build",
-    "prerelease": "pnpm run lint && pnpm run build",
+    "prerelease": "pnpm run lint && pnpm run typecheck && pnpm run build",
     "release": "bumpp packages/sekisho/package.json --install -r --commit \"release: %s\" --tag \"%s\""
   },
   "devDependencies": {
